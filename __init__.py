@@ -183,6 +183,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             query_path = query_text.replace('file', '', 1).strip()
             recent_items = files
         else:
+            query_path = query_text
             recent_items = folders + files
 
         for item_path in recent_items:
