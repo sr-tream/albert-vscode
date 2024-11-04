@@ -99,14 +99,16 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         )
 
     # Return a recent item.
-    def make_recent_item(self, path: str | Path, recent_type: Literal["file", "folder"]) -> Item:
+    def make_recent_item(self, path: str | Path, recent_type: Literal["File", "Folder"]) -> Item:
         resized_path = self.resize_path(path)
         path_splits = resized_path.split("/")
         working_dir_path, filename = path_splits[:-1], path_splits[-1]
         formatted_path = "{}/{}".format("/".join(working_dir_path), filename)
 
         return self.make_item(
-            formatted_path, "Open Recent {}".format(recent_type), [Action(id=path, text="Open in Visual Studio Code", callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, path]))]
+            "{}: {}".format(recent_type, path_splits[-1]), formatted_path,
+            [Action(id=path, text="Open in Visual Studio Code",
+                    callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, path]))]
         )
 
     # Return a recent item.
@@ -150,7 +152,12 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             if not project_enabled or not project_name or not project_path:
                 continue
 
-            if query_text not in project_name.lower() and all(query_text not in tag.lower() for tag in project_tags):
+            query_name = query_text
+            for tag in project_tags:
+                if tag.lower() in query_name:
+                    query_name = query_name.replace(tag.lower(), '', 1).strip()
+
+            if query_name not in project_name.lower():
                 continue
 
             if not project_path.startswith(('vscode:', 'file:')):
@@ -168,11 +175,22 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             items.append(query.add(self.make_item("Recent Files and Folders not found")))
             return items
 
-        for element_name in folders + files:
-            if query_text not in element_name.lower():
+        recent_items = []
+        if 'folder' in query_text:
+            query_path = query_text.replace('folder', '', 1).strip()
+            recent_items = folders
+        elif 'file' in query_text:
+            query_path = query_text.replace('file', '', 1).strip()
+            recent_items = files
+        else:
+            recent_items = folders + files
+
+        for item_path in recent_items:
+            if query_path not in item_path.lower():
                 continue
             else:
-                item = query.add(self.make_recent_item(element_name, "folder" if element_name in folders else "file"))
+                item_type = "Folder" if item_path in folders else "File"
+                item = query.add(self.make_recent_item(item_path, item_type))
             items.append(item)
 
         return items
