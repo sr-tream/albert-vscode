@@ -110,7 +110,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         )
 
     # Return a recent item.
-    def make_project_item(self, path: str | Path, name: str) -> Item:
+    def make_project_item(self, path: str, name: str) -> Item:
         resized_path = self.resize_path(path)
         path_splits = resized_path.split("/")
         working_dir_path, filename = path_splits[:-1], path_splits[-1]
@@ -119,7 +119,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         return StandardItem(
             id=md_id, iconUrls=self.ICON_PROJECT, text=name, subtext=formatted_path,
             actions=[Action(id=path, text="Open in Visual Studio Code",
-                            callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, path]))]
+                            callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, '--folder-uri', path]))]
         )
 
     def handleTriggerQuery(self, query) -> Optional[List[Item]]:
@@ -144,15 +144,24 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         for project in projects:
             project_name = project.get('name', '')
             project_path = project.get('rootPath', '')
+            project_enabled = project.get('enabled', True)
+            project_tags = project.get('tags', [])
 
-            if not project_name or not project_path:
+            if not project_enabled or not project_name or not project_path:
+                continue
+
+            if query_text not in project_name.lower() and all(query_text not in tag.lower() for tag in project_tags):
                 continue
 
             if not project_path.startswith(('vscode:', 'file:')):
                 project_path = f"file://{project_path}"
 
-            fs_path = project_path.replace('file://', '', 1).replace('vscode://', '', 1)
-            item = self.make_project_item(fs_path, project_name)
+            if project_path.startswith(('file:')):
+                fs_path = Path(project_path.replace('file://', '', 1))
+                if not fs_path.exists():
+                    continue
+
+            item = self.make_project_item(project_path, project_name)
             items.append(query.add(item))
 
         if not folders and not files:
