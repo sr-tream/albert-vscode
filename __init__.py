@@ -24,7 +24,9 @@ md_url = "https://github.com/mparati31/albert-vscode"
 
 
 class Plugin(PluginInstance, GlobalQueryHandler):
+    ICON_PROJECT = [f"file:{Path(__file__).parent}/icon_project.png"]
     ICON = [f"file:{Path(__file__).parent}/icon.png"]
+    VSCODE_PROJECTS_PATH = Path.home() / ".config" / "Code" / "User" / "globalStorage" / 'alefragnani.project-manager' / 'projects.json'
     VSCODE_RECENT_PATH = Path.home() / ".config" / "Code" / "User" / "globalStorage" / "storage.json"
     EXECUTABLE = which("code")
 
@@ -46,6 +48,21 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         files_paths = list(map(extract_path, files))
         folders_paths = list(map(extract_path, folders))
         return files_paths, folders_paths
+
+    # Return favorite projects
+    def get_favorite_projects(self) -> List[dict]:
+        try:
+            projects_path = self.VSCODE_PROJECTS_PATH
+            if not projects_path.exists():
+                return []
+
+            with open(projects_path, 'r') as f:
+                projects = json.load(f)
+
+            return projects
+        except Exception as e:
+            warning(f"Error reading Project Manager settings: {str(e)}")
+            return []
 
     # Returns the abbreviation of `path` that has `maxchars` character size.
     def resize_path(self, path: str | Path, maxchars: int = 45) -> str:
@@ -92,6 +109,19 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             formatted_path, "Open Recent {}".format(recent_type), [Action(id=path, text="Open in Visual Studio Code", callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, path]))]
         )
 
+    # Return a recent item.
+    def make_project_item(self, path: str | Path, name: str) -> Item:
+        resized_path = self.resize_path(path)
+        path_splits = resized_path.split("/")
+        working_dir_path, filename = path_splits[:-1], path_splits[-1]
+        formatted_path = "{}/{}".format("/".join(working_dir_path), filename)
+
+        return StandardItem(
+            id=md_id, iconUrls=self.ICON_PROJECT, text=name, subtext=formatted_path,
+            actions=[Action(id=path, text="Open in Visual Studio Code",
+                            callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, path]))]
+        )
+
     def handleTriggerQuery(self, query) -> Optional[List[Item]]:
         if not self.EXECUTABLE:
             return query.add(self.make_item("Visual Studio Code not installed"))
@@ -102,19 +132,36 @@ class Plugin(PluginInstance, GlobalQueryHandler):
 
         query_text = query_text.strip().lower()
         files, folders = self.get_visual_studio_code_recent()
+        projects = self.get_favorite_projects()
 
         debug("vs recent files: {}".format(files))
         debug("vs recent folders: {}".format(folders))
 
-        if not folders and not files:
-            return [query.add(self.make_new_window_item()), query.add(self.make_item("Recent Files and Folders not found"))]
-
         items = []
-        for element_name in ["New Empty Window"] + folders + files:
+        if query_text in "New Empty Window".lower():
+            items.append(query.add(self.make_new_window_item()))
+
+        for project in projects:
+            project_name = project.get('name', '')
+            project_path = project.get('rootPath', '')
+
+            if not project_name or not project_path:
+                continue
+
+            if not project_path.startswith(('vscode:', 'file:')):
+                project_path = f"file://{project_path}"
+
+            fs_path = project_path.replace('file://', '', 1).replace('vscode://', '', 1)
+            item = self.make_project_item(fs_path, project_name)
+            items.append(query.add(item))
+
+        if not folders and not files:
+            items.append(query.add(self.make_item("Recent Files and Folders not found")))
+            return items
+
+        for element_name in folders + files:
             if query_text not in element_name.lower():
                 continue
-            if element_name == "New Empty Window":
-                item = query.add(self.make_new_window_item())
             else:
                 item = query.add(self.make_recent_item(element_name, "folder" if element_name in folders else "file"))
             items.append(item)
