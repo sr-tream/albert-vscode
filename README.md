@@ -1,3 +1,27 @@
+## The fork changes
+
+### Load favorite projects from [alefragnani.project-manager](https://github.com/alefragnani/vscode-project-manager) extension
+
+- Support filtering by tags
+- Don't show disabled projects
+- Don't show projects with invalid root path (e.g. from unmounted storages)
+
+![](img/projects.png)
+
+### Change recent view
+
+- Show basename of folder/file in title
+- Move full path to description
+- Allow filter recents by type (file/folder)
+
+![](img/recent.png)
+
+
+
+
+
+# Below is original README
+
 # albert-vscode
 
 Simple [albert-launcher](https://github.com/albertlauncher/albert) extension that shows and opens recent Visual Studio Code files and folders.
