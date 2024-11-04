@@ -105,10 +105,11 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         working_dir_path, filename = path_splits[:-1], path_splits[-1]
         formatted_path = "{}/{}".format("/".join(working_dir_path), filename)
 
+        uri_flag = "--file-uri" if recent_type == "File" else "--folder-uri"
         return self.make_item(
             "{}: {}".format(recent_type, path_splits[-1]), formatted_path,
             [Action(id=path, text="Open in Visual Studio Code",
-                    callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, path]))]
+                    callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, uri_flag, Path(path).as_uri()]))]
         )
 
     # Return a recent item.
