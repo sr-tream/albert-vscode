@@ -187,7 +187,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             recent_items = folders + files
 
         for item_path in recent_items:
-            if query_path not in item_path.lower():
+            if query_path not in item_path.lower() or not Path(item_path).exists():
                 continue
             else:
                 item_type = "Folder" if item_path in folders else "File"
