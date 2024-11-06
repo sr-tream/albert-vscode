@@ -37,17 +37,23 @@ class Plugin(PluginInstance, GlobalQueryHandler):
     # Returns the following tuple: (recent files paths, recent folders paths).
     def get_visual_studio_code_recent(
         self,
-    ) -> Tuple[List[str], List[str]]:
+    ) -> Tuple[List[str], List[str], List[str]]:
         storage = json.load(open(self.VSCODE_RECENT_PATH, "r"))
         menu_items = storage["lastKnownMenubarData"]["menus"]["File"]["items"]
         file_menu_items = list(filter(lambda item: item["id"] == "submenuitem.MenubarRecentMenu", menu_items))
         submenu_recent_items = file_menu_items[0]["submenu"]["items"]
-        files = list(filter(lambda item: item["id"] == "openRecentFile", submenu_recent_items))
-        folders = list(filter(lambda item: item["id"] == "openRecentFolder", submenu_recent_items))
+        files = list(filter(lambda item: item["id"] == "openRecentFile" and item["enabled"] == True, submenu_recent_items))
+        folders = list(filter(lambda item: item["id"] == "openRecentFolder" and item["enabled"] == True, submenu_recent_items))
         extract_path = lambda item: item["uri"]["path"]
         files_paths = list(map(extract_path, files))
         folders_paths = list(map(extract_path, folders))
-        return files_paths, folders_paths
+
+        workspaces_paths = []
+        if "profileAssociations" in storage and "workspaces" in storage["profileAssociations"]:
+            workspaces = storage["profileAssociations"]["workspaces"]
+            workspaces_paths = [path.replace('file://', '') for path in workspaces.keys()]
+
+        return files_paths, folders_paths, workspaces_paths
 
     # Return favorite projects
     def get_favorite_projects(self) -> List[dict]:
@@ -134,11 +140,12 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         debug("query: '{}'".format(query_text))
 
         query_text = query_text.strip().lower()
-        files, folders = self.get_visual_studio_code_recent()
+        files, folders, workspaces = self.get_visual_studio_code_recent()
         projects = self.get_favorite_projects()
 
         debug("vs recent files: {}".format(files))
         debug("vs recent folders: {}".format(folders))
+        debug("vs recent workspaces: {}".format(workspaces))
 
         items = []
         if query_text in "New Empty Window".lower():
@@ -172,26 +179,26 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             item = self.make_project_item(project_path, project_name)
             items.append(query.add(item))
 
-        if not folders and not files:
+        if not folders and not files and not workspaces:
             items.append(query.add(self.make_item("Recent Files and Folders not found")))
             return items
 
         recent_items = []
         if 'folder' in query_text:
             query_path = query_text.replace('folder', '', 1).strip()
-            recent_items = folders
+            recent_items = list(dict.fromkeys(folders + workspaces))
         elif 'file' in query_text:
             query_path = query_text.replace('file', '', 1).strip()
             recent_items = files
         else:
             query_path = query_text
-            recent_items = folders + files
+            recent_items = list(dict.fromkeys(folders + workspaces)) + files
 
         for item_path in recent_items:
             if query_path not in item_path.lower() or not Path(item_path).exists():
                 continue
             else:
-                item_type = "Folder" if item_path in folders else "File"
+                item_type = "Folder" if item_path in folders or item_path in workspaces else "File"
                 item = query.add(self.make_recent_item(item_path, item_type))
             items.append(item)
 
