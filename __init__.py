@@ -33,6 +33,83 @@ class Plugin(PluginInstance, GlobalQueryHandler):
     def __init__(self):
         GlobalQueryHandler.__init__(self, id=md_id, name=md_name, description=md_description, defaultTrigger="vs ")
         PluginInstance.__init__(self, extensions=[self])
+        self._mode = self.readConfig("mode", str)
+        if self._mode is None:
+            self._mode = "VSCode"
+        else:
+            self.updateMode()
+
+    def configWidget(self):
+        return [
+            {"type": "label", "text": "Select Mode:"},
+            {
+                "type": "combobox",
+                "label": "Mode",
+                "property": "mode",
+                "items": ["VSCode", "Windsurf"],
+                "widget_properties": {
+                    "currentIndex": 0 if self.mode == "VSCode" else 1
+                },
+            },
+        ]
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, value):
+        self._mode = value
+        self.writeConfig("mode", value)
+        self.updateMode()
+
+    def updateMode(self):
+        if self.mode == "VSCode":
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/icon.png"]
+            self.VSCODE_RECENT_PATH = (
+                Path.home()
+                / ".config"
+                / "Code"
+                / "User"
+                / "globalStorage"
+                / "storage.json"
+            )
+            self.VSCODE_PROJECTS_PATH = (
+                Path.home()
+                / ".config"
+                / "Code"
+                / "User"
+                / "globalStorage"
+                / "alefragnani.project-manager"
+                / "projects.json"
+            )
+            self.EXECUTABLE = (
+                which("code") or which("code-insiders") or which("vscodium") or ""
+            )
+        else:
+            self.ICON_PROJECT = [
+                f"file:{Path(__file__).parent}/windsurf-icon_project.png"
+            ]
+            self.ICON = [f"file:{Path(__file__).parent}/windsurf-icon.png"]
+            self.VSCODE_RECENT_PATH = (
+                Path.home()
+                / ".config"
+                / "Windsurf"
+                / "User"
+                / "globalStorage"
+                / "storage.json"
+            )
+            self.VSCODE_PROJECTS_PATH = (
+                Path.home()
+                / ".config"
+                / "Windsurf"
+                / "User"
+                / "globalStorage"
+                / "alefragnani.project-manager"
+                / "projects.json"
+            )
+            self.EXECUTABLE = which("windsurf") or ""
 
     # Returns the following tuple: (recent files paths, recent folders paths).
     def get_visual_studio_code_recent(

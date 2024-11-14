@@ -1,5 +1,9 @@
 ## The fork changes
 
+### Add [Codeium Wingsurf](https://codeium.com/windsurf) support
+
+![](img/wingsurf.png)
+
 ### Load favorite projects from [alefragnani.project-manager](https://github.com/alefragnani/vscode-project-manager) extension
 
 - Support filtering by tags
