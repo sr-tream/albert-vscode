@@ -46,7 +46,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 "type": "combobox",
                 "label": "Mode",
                 "property": "mode",
-                "items": ["VSCode", "Cursor", "Windsurf"],
+                "items": ["VSCode", "VSCode - Insiders", "VSCodium", "VSCodium - Insiders", "Cursor", "Windsurf"],
                 "widget_properties": {
                     "currentIndex": 0 if self.mode == "VSCode" else 1
                 },
@@ -85,7 +85,76 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 / "projects.json"
             )
             self.EXECUTABLE = (
-                which("code") or which("code-insiders") or which("vscodium") or ""
+                which("code") or ""
+            )
+        elif self.mode == "VSCode - Insiders":
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/icon.png"]
+            self.VSCODE_RECENT_PATH = (
+                Path.home()
+                / ".config"
+                / "Code - Insiders"
+                / "User"
+                / "globalStorage"
+                / "storage.json"
+            )
+            self.VSCODE_PROJECTS_PATH = (
+                Path.home()
+                / ".config"
+                / "Code - Insiders"
+                / "User"
+                / "globalStorage"
+                / "alefragnani.project-manager"
+                / "projects.json"
+            )
+            self.EXECUTABLE = (
+                which("code-insiders") or ""
+            )
+        elif self.mode == "VSCodium":
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/codium-icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/codium-icon.png"]
+            self.VSCODE_RECENT_PATH = (
+                Path.home()
+                / ".config"
+                / "VSCodium"
+                / "User"
+                / "globalStorage"
+                / "storage.json"
+            )
+            self.VSCODE_PROJECTS_PATH = (
+                Path.home()
+                / ".config"
+                / "VSCodium"
+                / "User"
+                / "globalStorage"
+                / "alefragnani.project-manager"
+                / "projects.json"
+            )
+            self.EXECUTABLE = (
+                which("codium") or ""
+            )
+        elif self.mode == "VSCodium - Insiders":
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/codium-insiders-icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/codium-insiders-icon.png"]
+            self.VSCODE_RECENT_PATH = (
+                Path.home()
+                / ".config"
+                / "VSCodium - Insiders"
+                / "User"
+                / "globalStorage"
+                / "storage.json"
+            )
+            self.VSCODE_PROJECTS_PATH = (
+                Path.home()
+                / ".config"
+                / "VSCodium - Insiders"
+                / "User"
+                / "globalStorage"
+                / "alefragnani.project-manager"
+                / "projects.json"
+            )
+            self.EXECUTABLE = (
+                which("codium-insiders") or ""
             )
         elif self.mode == "Cursor":
             self.ICON_PROJECT = [f"file:{Path(__file__).parent}/cursor-icon_project.png"]
