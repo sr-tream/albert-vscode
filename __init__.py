@@ -46,7 +46,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 "type": "combobox",
                 "label": "Mode",
                 "property": "mode",
-                "items": ["VSCode", "Windsurf"],
+                "items": ["VSCode", "Cursor", "Windsurf"],
                 "widget_properties": {
                     "currentIndex": 0 if self.mode == "VSCode" else 1
                 },
@@ -86,6 +86,29 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             )
             self.EXECUTABLE = (
                 which("code") or which("code-insiders") or which("vscodium") or ""
+            )
+        elif self.mode == "Cursor":
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/cursor-icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/cursor-icon.png"]
+            self.VSCODE_RECENT_PATH = (
+                Path.home()
+                / ".config"
+                / "Cursor"
+                / "User"
+                / "globalStorage"
+                / "storage.json"
+            )
+            self.VSCODE_PROJECTS_PATH = (
+                Path.home()
+                / ".config"
+                / "Cursor"
+                / "User"
+                / "globalStorage"
+                / "alefragnani.project-manager"
+                / "projects.json"
+            )
+            self.EXECUTABLE = (
+                which("cursor") or which("cursor.AppImage") or ""
             )
         else:
             self.ICON_PROJECT = [

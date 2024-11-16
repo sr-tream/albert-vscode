@@ -1,6 +1,6 @@
 ## The fork changes
 
-### Add [Codeium Wingsurf](https://codeium.com/windsurf) support
+### Add [Cursor](https://www.cursor.com/) and [Codeium Wingsurf](https://codeium.com/windsurf) support
 
 ![](img/wingsurf.png)
 
