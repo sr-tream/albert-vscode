@@ -44,15 +44,16 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         self._git_executable = self.readConfig("git_executable", str) or "git"
 
     def configWidget(self):
+        editors = ["VSCode", "VSCode - Insiders", "VSCodium", "VSCodium - Insiders", "Cursor", "Windsurf"]
         return [
             {"type": "label", "text": "Select Mode:"},
             {
                 "type": "combobox",
                 "label": "Mode",
                 "property": "mode",
-                "items": ["VSCode", "VSCode - Insiders", "VSCodium", "VSCodium - Insiders", "Cursor", "Windsurf"],
+                "items": editors,
                 "widget_properties": {
-                    "currentIndex": 0 if self.mode == "VSCode" else 1
+                    "currentIndex": editors.index(self.mode) if self.mode in editors else 0
                 },
             },
             {"type": "label", "text": "Git Settings:"},
