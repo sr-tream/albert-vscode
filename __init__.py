@@ -12,7 +12,7 @@ from pathlib import Path
 from shutil import which
 from typing import List, Literal, Optional, Tuple
 from albert import *
-
+import subprocess
 
 md_name = "Visual Studio Code"
 md_iid = "2.1"
@@ -38,6 +38,10 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             self._mode = "VSCode"
         else:
             self.updateMode()
+        
+        # Initialize git worktree settings
+        self._extract_worktrees = self.readConfig("extract_worktrees", bool) or False
+        self._git_executable = self.readConfig("git_executable", str) or "git"
 
     def configWidget(self):
         return [
@@ -51,6 +55,19 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                     "currentIndex": 0 if self.mode == "VSCode" else 1
                 },
             },
+            {"type": "label", "text": "Git Settings:"},
+            {
+                "type": "checkbox",
+                "label": "Extract Git Worktrees",
+                "property": "extract_worktrees",
+                "value": self._extract_worktrees
+            },
+            {
+                "type": "lineedit",
+                "label": "Git Executable Path",
+                "property": "git_executable",
+                "value": self._git_executable
+            },
         ]
 
     @property
@@ -62,6 +79,24 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         self._mode = value
         self.writeConfig("mode", value)
         self.updateMode()
+
+    @property
+    def extract_worktrees(self):
+        return self._extract_worktrees
+
+    @extract_worktrees.setter
+    def extract_worktrees(self, value):
+        self._extract_worktrees = value
+        self.writeConfig("extract_worktrees", value)
+
+    @property
+    def git_executable(self):
+        return self._git_executable
+
+    @git_executable.setter
+    def git_executable(self, value):
+        self._git_executable = value
+        self.writeConfig("git_executable", value)
 
     def updateMode(self):
         if self.mode == "VSCode":
@@ -234,7 +269,49 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             with open(projects_path, 'r') as f:
                 projects = json.load(f)
 
-            return projects
+            if not self.extract_worktrees:
+                return projects
+
+            # Process git worktrees for each project
+            expanded_projects = []
+            for project in projects:
+                project_enabled = project.get('enabled', True)
+                if not project_enabled:
+                    continue
+
+                project_path = Path(project.get('rootPath', ''))
+                git_dir = project_path / '.git'
+
+                # If project has .git, check for worktrees
+                if git_dir.exists():
+                    try:
+                        # Get all worktrees
+                        worktrees_output = subprocess.check_output(
+                            [self.git_executable, 'worktree', 'list'],
+                            cwd=project_path,
+                            text=True
+                        ).splitlines()
+
+                        # Process each worktree
+                        for line in worktrees_output:
+                            if not line.strip():
+                                continue
+                            parts = line.split()
+                            if len(parts) >= 3:
+                                wt_path = parts[0]
+                                wt_branch = parts[2].strip('[]')
+                                # Create a copy of the project for each worktree
+                                wt_project = project.copy()
+                                wt_project['rootPath'] = wt_path
+                                wt_project['name'] = f"{project['name']}:{wt_branch}"
+                                expanded_projects.append(wt_project)
+                    except (subprocess.CalledProcessError, OSError) as e:
+                        warning(f"Error processing git worktrees for {project_path}: {str(e)}")
+                        expanded_projects.append(project)  # Add original project on error
+                else:
+                    expanded_projects.append(project)  # Add non-git projects as is
+
+            return expanded_projects
         except Exception as e:
             warning(f"Error reading Project Manager settings: {str(e)}")
             return []

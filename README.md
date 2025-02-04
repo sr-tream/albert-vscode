@@ -7,6 +7,7 @@
 ### Load favorite projects from [alefragnani.project-manager](https://github.com/alefragnani/vscode-project-manager) extension
 
 - Support filtering by tags
+- Support git worktrees
 - Don't show disabled projects
 - Don't show projects with invalid root path (e.g. from unmounted storages)
 
