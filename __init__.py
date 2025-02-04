@@ -24,8 +24,8 @@ md_url = "https://github.com/mparati31/albert-vscode"
 
 
 class Plugin(PluginInstance, GlobalQueryHandler):
-    ICON_PROJECT = [f"file:{Path(__file__).parent}/icon_project.png"]
-    ICON = [f"file:{Path(__file__).parent}/icon.png"]
+    ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/icon_project.png"]
+    ICON = [f"file:{Path(__file__).parent}/icons/icon.png"]
     VSCODE_PROJECTS_PATH = Path.home() / ".config" / "Code" / "User" / "globalStorage" / 'alefragnani.project-manager' / 'projects.json'
     VSCODE_RECENT_PATH = Path.home() / ".config" / "Code" / "User" / "globalStorage" / "storage.json"
     EXECUTABLE = which("code")
@@ -120,8 +120,8 @@ class Plugin(PluginInstance, GlobalQueryHandler):
 
     def updateMode(self):
         if self.mode == "VSCode":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/icon.png"]
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/icons/icon.png"]
             self.VSCODE_RECENT_PATH = (
                 Path.home()
                 / ".config"
@@ -143,8 +143,8 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 which("code") or ""
             )
         elif self.mode == "VSCode - Insiders":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/icon.png"]
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/icons/icon.png"]
             self.VSCODE_RECENT_PATH = (
                 Path.home()
                 / ".config"
@@ -166,8 +166,8 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 which("code-insiders") or ""
             )
         elif self.mode == "VSCodium":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/codium-icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/codium-icon.png"]
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/codium-icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/icons/codium-icon.png"]
             self.VSCODE_RECENT_PATH = (
                 Path.home()
                 / ".config"
@@ -189,8 +189,8 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 which("codium") or ""
             )
         elif self.mode == "VSCodium - Insiders":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/codium-insiders-icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/codium-insiders-icon.png"]
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/codium-insiders-icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/icons/codium-insiders-icon.png"]
             self.VSCODE_RECENT_PATH = (
                 Path.home()
                 / ".config"
@@ -212,8 +212,8 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 which("codium-insiders") or ""
             )
         elif self.mode == "Cursor":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/cursor-icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/cursor-icon.png"]
+            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/cursor-icon_project.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/icons/cursor-icon.png"]
             self.VSCODE_RECENT_PATH = (
                 Path.home()
                 / ".config"
@@ -236,9 +236,9 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             )
         else:
             self.ICON_PROJECT = [
-                f"file:{Path(__file__).parent}/windsurf-icon_project.png"
+                f"file:{Path(__file__).parent}/icons/windsurf-icon_project.png"
             ]
-            self.ICON = [f"file:{Path(__file__).parent}/windsurf-icon.png"]
+            self.ICON = [f"file:{Path(__file__).parent}/icons/windsurf-icon.png"]
             self.VSCODE_RECENT_PATH = (
                 Path.home()
                 / ".config"
