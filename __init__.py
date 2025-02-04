@@ -402,26 +402,61 @@ class Plugin(PluginInstance, GlobalQueryHandler):
 
     def handleTriggerQuery(self, query) -> Optional[List[Item]]:
         if not self.EXECUTABLE:
-            return query.add(self.make_item("Visual Studio Code not installed"))
-
-        query_text = query.string
-
-        debug("query: '{}'".format(query_text))
-
-        query_text = query_text.strip().lower()
-        files, folders, workspaces = self.get_visual_studio_code_recent()
-        projects = self.get_favorite_projects()
-
-        debug("vs recent files: {}".format(files))
-        debug("vs recent folders: {}".format(folders))
-        debug("vs recent workspaces: {}".format(workspaces))
+            return
 
         items = []
-        if query_text in "New Empty Window".lower():
-            items.append(query.add(self.make_new_window_item()))
+        query_text = query.string.strip().lower()
 
+        # Get recent files and folders
+        files, folders, workspaces = self.get_visual_studio_code_recent()
+
+        # Get favorite projects
+        projects = self.get_favorite_projects()
+
+        # Always show "New Window" item first
+        items.append(query.add(self.make_new_window_item()))
+
+        # If query is empty, show all items
+        if not query_text:
+            # Add all enabled projects
+            for project in projects:
+                project_path = project.get('rootPath', '')
+                project_enabled = project.get('enabled', True)
+
+                if not project_enabled or not project_path:
+                    continue
+
+                if not project_path.startswith(('vscode:', 'file:')):
+                    project_path = f"file://{project_path}"
+
+                if project_path.startswith(('file:')):
+                    fs_path = Path(project_path.replace('file://', '', 1))
+                    if not fs_path.exists():
+                        continue
+
+                item = self.make_project_item(project_path, project.get('name', ''))
+                items.append(query.add(item))
+
+            # Add all recent items
+            recent_items = list(dict.fromkeys(files + folders + workspaces))
+            for path in recent_items:
+                if not path:
+                    continue
+
+                if path in files:
+                    items.append(query.add(self.make_recent_item(path, "File")))
+                else:
+                    items.append(query.add(self.make_recent_item(path, "Folder")))
+
+            return items
+
+        # Split query into multiple filters
+        filters = query_text.split()
+
+        # Process favorite projects
+        filtered_projects = []
         for project in projects:
-            project_name = project.get('name', '')
+            project_name = project.get('name', '').lower()
             project_path = project.get('rootPath', '')
             project_enabled = project.get('enabled', True)
             project_tags = project.get('tags', [])
@@ -429,12 +464,23 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             if not project_enabled or not project_name or not project_path:
                 continue
 
-            query_name = query_text
-            for tag in project_tags:
-                if tag.lower() in query_name:
-                    query_name = query_name.replace(tag.lower(), '', 1).strip()
+            # Apply each filter sequentially
+            match = True
+            remaining_filters = filters.copy()
 
-            if query_name not in project_name.lower():
+            # First check tags and remove matching ones from filters
+            for tag in project_tags:
+                tag = tag.lower()
+                if tag in remaining_filters:
+                    remaining_filters.remove(tag)
+
+            # Then check if all remaining filters match the project name
+            for filter_text in remaining_filters:
+                if filter_text not in project_name:
+                    match = False
+                    break
+
+            if not match:
                 continue
 
             if not project_path.startswith(('vscode:', 'file:')):
@@ -445,30 +491,42 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 if not fs_path.exists():
                     continue
 
-            item = self.make_project_item(project_path, project_name)
+            item = self.make_project_item(project_path, project.get('name', ''))
             items.append(query.add(item))
 
         if not folders and not files and not workspaces:
             items.append(query.add(self.make_item("Recent Files and Folders not found")))
             return items
 
+        # Process recent items
         recent_items = []
-        if 'folder' in query_text:
-            query_path = query_text.replace('folder', '', 1).strip()
+        if 'folder' in filters:
+            filters.remove('folder')
             recent_items = list(dict.fromkeys(folders + workspaces))
-        elif 'file' in query_text:
-            query_path = query_text.replace('file', '', 1).strip()
+        elif 'file' in filters:
+            filters.remove('file')
             recent_items = files
         else:
-            query_path = query_text
-            recent_items = list(dict.fromkeys(folders + workspaces)) + files
+            recent_items = list(dict.fromkeys(files + folders + workspaces))
 
-        for item_path in recent_items:
-            if query_path not in item_path.lower() or not Path(item_path).exists():
+        # Apply remaining filters to recent items
+        for path in recent_items:
+            if not path:
                 continue
+
+            path_lower = path.lower()
+            match = True
+            for filter_text in filters:
+                if filter_text not in path_lower:
+                    match = False
+                    break
+
+            if not match:
+                continue
+
+            if path in files:
+                items.append(query.add(self.make_recent_item(path, "File")))
             else:
-                item_type = "Folder" if item_path in folders or item_path in workspaces else "File"
-                item = query.add(self.make_recent_item(item_path, item_type))
-            items.append(item)
+                items.append(query.add(self.make_recent_item(path, "Folder")))
 
         return items
