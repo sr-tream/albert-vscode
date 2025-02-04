@@ -119,144 +119,58 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         self.writeConfig("worktree_name_template", value)
 
     def updateMode(self):
-        if self.mode == "VSCode":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/icons/icon.png"]
-            self.VSCODE_RECENT_PATH = (
-                Path.home()
-                / ".config"
-                / "Code"
-                / "User"
-                / "globalStorage"
-                / "storage.json"
-            )
-            self.VSCODE_PROJECTS_PATH = (
-                Path.home()
-                / ".config"
-                / "Code"
-                / "User"
-                / "globalStorage"
-                / "alefragnani.project-manager"
-                / "projects.json"
-            )
-            self.EXECUTABLE = (
-                which("code") or ""
-            )
-        elif self.mode == "VSCode - Insiders":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/icons/icon.png"]
-            self.VSCODE_RECENT_PATH = (
-                Path.home()
-                / ".config"
-                / "Code - Insiders"
-                / "User"
-                / "globalStorage"
-                / "storage.json"
-            )
-            self.VSCODE_PROJECTS_PATH = (
-                Path.home()
-                / ".config"
-                / "Code - Insiders"
-                / "User"
-                / "globalStorage"
-                / "alefragnani.project-manager"
-                / "projects.json"
-            )
-            self.EXECUTABLE = (
-                which("code-insiders") or ""
-            )
-        elif self.mode == "VSCodium":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/codium-icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/icons/codium-icon.png"]
-            self.VSCODE_RECENT_PATH = (
-                Path.home()
-                / ".config"
-                / "VSCodium"
-                / "User"
-                / "globalStorage"
-                / "storage.json"
-            )
-            self.VSCODE_PROJECTS_PATH = (
-                Path.home()
-                / ".config"
-                / "VSCodium"
-                / "User"
-                / "globalStorage"
-                / "alefragnani.project-manager"
-                / "projects.json"
-            )
-            self.EXECUTABLE = (
-                which("codium") or ""
-            )
-        elif self.mode == "VSCodium - Insiders":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/codium-insiders-icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/icons/codium-insiders-icon.png"]
-            self.VSCODE_RECENT_PATH = (
-                Path.home()
-                / ".config"
-                / "VSCodium - Insiders"
-                / "User"
-                / "globalStorage"
-                / "storage.json"
-            )
-            self.VSCODE_PROJECTS_PATH = (
-                Path.home()
-                / ".config"
-                / "VSCodium - Insiders"
-                / "User"
-                / "globalStorage"
-                / "alefragnani.project-manager"
-                / "projects.json"
-            )
-            self.EXECUTABLE = (
-                which("codium-insiders") or ""
-            )
-        elif self.mode == "Cursor":
-            self.ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/cursor-icon_project.png"]
-            self.ICON = [f"file:{Path(__file__).parent}/icons/cursor-icon.png"]
-            self.VSCODE_RECENT_PATH = (
-                Path.home()
-                / ".config"
-                / "Cursor"
-                / "User"
-                / "globalStorage"
-                / "storage.json"
-            )
-            self.VSCODE_PROJECTS_PATH = (
-                Path.home()
-                / ".config"
-                / "Cursor"
-                / "User"
-                / "globalStorage"
-                / "alefragnani.project-manager"
-                / "projects.json"
-            )
-            self.EXECUTABLE = (
-                which("cursor") or which("cursor.AppImage") or ""
-            )
+        # Editor configurations
+        EDITORS = {
+            "VSCode": {
+                "icon_prefix": "icon",
+                "config_dir": "Code",
+                "executable": "code"
+            },
+            "VSCode - Insiders": {
+                "icon_prefix": "icon",
+                "config_dir": "Code - Insiders",
+                "executable": "code-insiders"
+            },
+            "VSCodium": {
+                "icon_prefix": "codium-icon",
+                "config_dir": "VSCodium",
+                "executable": "codium"
+            },
+            "VSCodium - Insiders": {
+                "icon_prefix": "codium-insiders-icon",
+                "config_dir": "VSCodium - Insiders",
+                "executable": "codium-insiders"
+            },
+            "Cursor": {
+                "icon_prefix": "cursor-icon",
+                "config_dir": "Cursor",
+                "executable": ["cursor", "cursor.AppImage"]
+            },
+            "Windsurf": {
+                "icon_prefix": "windsurf-icon",
+                "config_dir": "Windsurf",
+                "executable": "windsurf"
+            }
+        }
+
+        # Get editor config, default to Windsurf if mode not found
+        editor = EDITORS.get(self.mode, EDITORS["Windsurf"])
+        
+        # Set icons
+        icons_dir = Path(__file__).parent / "icons"
+        self.ICON_PROJECT = [f"file:{icons_dir}/{editor['icon_prefix']}_project.png"]
+        self.ICON = [f"file:{icons_dir}/{editor['icon_prefix']}.png"]
+
+        # Set paths
+        config_base = Path.home() / ".config" / editor["config_dir"] / "User" / "globalStorage"
+        self.VSCODE_RECENT_PATH = config_base / "storage.json"
+        self.VSCODE_PROJECTS_PATH = config_base / "alefragnani.project-manager" / "projects.json"
+
+        # Set executable
+        if isinstance(editor["executable"], list):
+            self.EXECUTABLE = next((exe for exe in map(which, editor["executable"]) if exe), "")
         else:
-            self.ICON_PROJECT = [
-                f"file:{Path(__file__).parent}/icons/windsurf-icon_project.png"
-            ]
-            self.ICON = [f"file:{Path(__file__).parent}/icons/windsurf-icon.png"]
-            self.VSCODE_RECENT_PATH = (
-                Path.home()
-                / ".config"
-                / "Windsurf"
-                / "User"
-                / "globalStorage"
-                / "storage.json"
-            )
-            self.VSCODE_PROJECTS_PATH = (
-                Path.home()
-                / ".config"
-                / "Windsurf"
-                / "User"
-                / "globalStorage"
-                / "alefragnani.project-manager"
-                / "projects.json"
-            )
-            self.EXECUTABLE = which("windsurf") or ""
+            self.EXECUTABLE = which(editor["executable"]) or ""
 
     # Returns the following tuple: (recent files paths, recent folders paths).
     def get_visual_studio_code_recent(
