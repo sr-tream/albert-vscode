@@ -42,6 +42,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         # Initialize git worktree settings
         self._extract_worktrees = self.readConfig("extract_worktrees", bool) or False
         self._git_executable = self.readConfig("git_executable", str) or "git"
+        self._worktree_name_template = self.readConfig("worktree_name_template", str) or "{name}:{branch}"
 
     def configWidget(self):
         editors = ["VSCode", "VSCode - Insiders", "VSCodium", "VSCodium - Insiders", "Cursor", "Windsurf"]
@@ -68,6 +69,15 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 "label": "Git Executable Path",
                 "property": "git_executable",
                 "value": self._git_executable
+            },
+            {
+                "type": "lineedit",
+                "label": "Worktree Name Template",
+                "property": "worktree_name_template",
+                "value": self._worktree_name_template,
+                "widget_properties": {
+                    "placeholderText": "Use {name} for project name and {branch} for branch name"
+                }
             },
         ]
 
@@ -98,6 +108,15 @@ class Plugin(PluginInstance, GlobalQueryHandler):
     def git_executable(self, value):
         self._git_executable = value
         self.writeConfig("git_executable", value)
+
+    @property
+    def worktree_name_template(self):
+        return self._worktree_name_template
+
+    @worktree_name_template.setter
+    def worktree_name_template(self, value):
+        self._worktree_name_template = value if value else "{name}:{branch}"
+        self.writeConfig("worktree_name_template", value)
 
     def updateMode(self):
         if self.mode == "VSCode":
@@ -304,7 +323,10 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                                 # Create a copy of the project for each worktree
                                 wt_project = project.copy()
                                 wt_project['rootPath'] = wt_path
-                                wt_project['name'] = f"{project['name']}:{wt_branch}"
+                                wt_project['name'] = self.worktree_name_template.format(
+                                    name=project['name'],
+                                    branch=wt_branch
+                                )
                                 expanded_projects.append(wt_project)
                     except (subprocess.CalledProcessError, OSError) as e:
                         warning(f"Error processing git worktrees for {project_path}: {str(e)}")
