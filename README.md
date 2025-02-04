@@ -1,8 +1,8 @@
 ## The fork changes
 
-### Add [Cursor](https://www.cursor.com/) and [Codeium Wingsurf](https://codeium.com/windsurf) support
+### Add [Cursor](https://www.cursor.com/) and [Codeium Windsurf](https://codeium.com/windsurf) support
 
-![](img/wingsurf.png)
+![](img/settings.png)
 
 ### Load favorite projects from [alefragnani.project-manager](https://github.com/alefragnani/vscode-project-manager) extension
 
