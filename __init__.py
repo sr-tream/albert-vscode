@@ -45,7 +45,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         self._worktree_name_template = self.readConfig("worktree_name_template", str) or "{name}:{branch}"
 
     def configWidget(self):
-        editors = ["VSCode", "VSCode - Insiders", "VSCodium", "VSCodium - Insiders", "Cursor", "Windsurf"]
+        editors = ["VSCode", "VSCode - Insiders", "VSCodium", "VSCodium - Insiders", "Cursor", "Windsurf", "Windsurf - Next"]
         return [
             {"type": "label", "text": "Select Mode:"},
             {
@@ -150,6 +150,11 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 "icon_prefix": "windsurf-icon",
                 "config_dir": "Windsurf",
                 "executable": "windsurf"
+            },
+            "Windsurf - Next": {
+                "icon_prefix": "windsurf-next-icon",
+                "config_dir": "Windsurf - Next",
+                "executable": "windsurf-next"
             }
         }
 
