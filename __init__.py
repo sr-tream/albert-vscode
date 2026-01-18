@@ -8,30 +8,34 @@ v0.6
 v0.7
   - convert to API 3.0
   - make albert-vscode open a new window instead of opening the last workspace
+v0.8
+  - convert to API 4.0
+  - add multi-editor support (VSCode, VSCodium, Cursor, Windsurf)
+  - add git worktree extraction support
+  - remove hardcoded 'code' executable requirement
 """
 
 import json
+import subprocess
 from pathlib import Path
 from shutil import which
-from typing import List, Literal, Optional, Tuple
+from typing import List, Literal, Tuple
 from albert import *
-import subprocess
 
 md_name = "Visual Studio Code"
-md_iid = "3.0"
+md_iid = "4.0"
 md_description = "Open & search recent Visual Studio Code files and folders."
-md_version = "0.7"
+md_version = "0.8"
 md_authors = ["@mparati31", "@bierchermuesli", "@noah-boeckmann"]
 md_url = "https://github.com/mparati31/albert-vscode"
 md_license = "unknown license"
 
 
 class Plugin(PluginInstance, GlobalQueryHandler):
-    ICON_PROJECT = [f"file:{Path(__file__).parent}/icons/icon_project.png"]
-    ICON = [f"file:{Path(__file__).parent}/icons/icon.png"]
+    ICON_PROJECT = Path(__file__).parent / "icons" / "icon_project.png"
+    ICON = Path(__file__).parent / "icons" / "icon.png"
     VSCODE_PROJECTS_PATH = Path.home() / ".config" / "Code" / "User" / "globalStorage" / 'alefragnani.project-manager' / 'projects.json'
     VSCODE_RECENT_PATH = Path.home() / ".config" / "Code" / "User" / "globalStorage" / "storage.json"
-    EXECUTABLE = which("code")
 
     def __init__(self):
         GlobalQueryHandler.__init__(self)
@@ -42,11 +46,28 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             self._mode = "VSCode"
         else:
             self.updateMode()
-        
+
         # Initialize git worktree settings
         self._extract_worktrees = self.readConfig("extract_worktrees", bool) or False
         self._git_executable = self.readConfig("git_executable", str) or "git"
         self._worktree_name_template = self.readConfig("worktree_name_template", str) or "{name}:{branch}"
+
+        # Initialize cache (will be populated on first successful use)
+        self._cached_files = []
+        self._cached_folders = []
+        self._cached_workspaces = []
+        self._cached_projects = []
+
+        # Populate cache once on init (non-critical if it fails)
+        try:
+            self._cached_files, self._cached_folders, self._cached_workspaces = self.get_visual_studio_code_recent()
+        except Exception as e:
+            warning(f"Failed to load recent items: {str(e)}")
+
+        try:
+            self._cached_projects = self.get_favorite_projects()
+        except Exception as e:
+            warning(f"Failed to load projects: {str(e)}")
 
     # Tells albert the default trigger, may be changed by user
     def defaultTrigger(self):
@@ -171,8 +192,8 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         
         # Set icons
         icons_dir = Path(__file__).parent / "icons"
-        self.ICON_PROJECT = [f"file:{icons_dir}/{editor['icon_prefix']}_project.png"]
-        self.ICON = [f"file:{icons_dir}/{editor['icon_prefix']}.png"]
+        self.ICON_PROJECT = icons_dir / f"{editor['icon_prefix']}_project.png"
+        self.ICON = icons_dir / f"{editor['icon_prefix']}.png"
 
         # Set paths
         config_base = Path.home() / ".config" / editor["config_dir"] / "User" / "globalStorage"
@@ -292,12 +313,17 @@ class Plugin(PluginInstance, GlobalQueryHandler):
 
     # Return a item.
     def make_item(self, text: str, subtext: str = "", actions: List[Action] = []) -> StandardItem:
-        return StandardItem(id=self.id(), iconUrls=self.ICON, text=text, subtext=subtext, actions=actions)
+        # Capture icon path as string to avoid issues with Path objects in lambdas
+        icon_path = str(self.ICON)
+        return StandardItem(id=self.id(), icon_factory=lambda: makeImageIcon(icon_path), text=text, subtext=subtext, actions=actions)
 
     # Return an item that create a new window.
     def make_new_window_item(self) -> StandardItem:
+        # Capture executable to avoid closure issues
+        exe = self.EXECUTABLE
         return self.make_item(
-            "New Empty Window", "Open new Visual Studio Code empty window", [Action(id=self.id(), text="Open in Visual Studio Code", callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, "-n"]))]
+            "New Empty Window", "Open new Visual Studio Code empty window", 
+            [Action(id=self.id(), text="Open in Visual Studio Code", callable=lambda: runDetachedProcess(cmdln=[exe, "-n"]))]
         )
 
     # Return a recent item.
@@ -308,10 +334,14 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         formatted_path = "{}/{}".format("/".join(working_dir_path), filename)
 
         uri_flag = "--file-uri" if recent_type == "File" else "--folder-uri"
+        # Capture values to avoid closure issues
+        exe = self.EXECUTABLE
+        path_uri = Path(path).as_uri()
+        path_id = str(path)
         return self.make_item(
             "{}: {}".format(recent_type, path_splits[-1]), formatted_path,
-            [Action(id=path, text="Open in Visual Studio Code",
-                    callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, uri_flag, Path(path).as_uri()]))]
+            [Action(id=path_id, text="Open in Visual Studio Code",
+                    callable=lambda u=uri_flag, p=path_uri: runDetachedProcess(cmdln=[exe, u, p]))]
         )
 
     # Return a recent item.
@@ -321,32 +351,44 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         working_dir_path, filename = path_splits[:-1], path_splits[-1]
         formatted_path = "{}/{}".format("/".join(working_dir_path), filename)
 
+        # Capture icon path as string and executable to avoid closure issues
+        icon_path = str(self.ICON_PROJECT)
+        exe = self.EXECUTABLE
         return StandardItem(
-            id=self.id(), iconUrls=self.ICON_PROJECT, text=name, subtext=formatted_path,
+            id=self.id(), icon_factory=lambda: makeImageIcon(icon_path), text=name, subtext=formatted_path,
             actions=[Action(id=path, text="Open in Visual Studio Code",
-                            callable=lambda: runDetachedProcess(cmdln=[self.EXECUTABLE, '--folder-uri', path]))]
+                            callable=lambda p=path: runDetachedProcess(cmdln=[exe, '--folder-uri', p]))]
         )
 
-    def handleTriggerQuery(self, query) -> Optional[List[Item]]:
+    def handleTriggerQuery(self, query) -> None:
         if not self.EXECUTABLE:
+            query.add(self.make_item(
+                f"{self.mode} not found",
+                f"Please install {self.mode} or check your mode in settings"
+            ))
             return
 
-        items = []
         query_text = query.string.strip().lower()
 
-        # Get recent files and folders
-        files, folders, workspaces = self.get_visual_studio_code_recent()
+        # Use cached data
+        files, folders, workspaces = self._cached_files, self._cached_folders, self._cached_workspaces
+        projects = self._cached_projects
 
-        # Get favorite projects
-        projects = self.get_favorite_projects()
+        # Collect all items in a list first, then add them all at once
+        items = []
+        
+        # Limit total items to prevent UI freeze
+        MAX_ITEMS = 50
 
         # Always show "New Window" item first
-        items.append(query.add(self.make_new_window_item()))
+        items.append(self.make_new_window_item())
 
-        # If query is empty, show all items
+        # If query is empty, show all items (limited)
         if not query_text:
             # Add all enabled projects
             for project in projects:
+                if len(items) >= MAX_ITEMS:
+                    break
                 project_path = project.get('rootPath', '')
                 project_enabled = project.get('enabled', True)
 
@@ -356,33 +398,37 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 if not project_path.startswith(('vscode:', 'file:')):
                     project_path = f"file://{project_path}"
 
-                if project_path.startswith(('file:')):
+                if project_path.startswith('file:'):
                     fs_path = Path(project_path.replace('file://', '', 1))
                     if not fs_path.exists():
                         continue
 
-                item = self.make_project_item(project_path, project.get('name', ''))
-                items.append(query.add(item))
+                items.append(self.make_project_item(project_path, project.get('name', '')))
 
-            # Add all recent items
+            # Add recent items (limited)
             recent_items = list(dict.fromkeys(files + folders + workspaces))
             for path in recent_items:
+                if len(items) >= MAX_ITEMS:
+                    break
                 if not path:
                     continue
 
                 if path in files:
-                    items.append(query.add(self.make_recent_item(path, "File")))
+                    items.append(self.make_recent_item(path, "File"))
                 else:
-                    items.append(query.add(self.make_recent_item(path, "Folder")))
+                    items.append(self.make_recent_item(path, "Folder"))
 
-            return items
+            # Add all items at once
+            query.add(items)
+            return
 
         # Split query into multiple filters
         filters = query_text.split()
 
         # Process favorite projects
-        filtered_projects = []
         for project in projects:
+            if len(items) >= MAX_ITEMS:
+                break
             project_name = project.get('name', '').lower()
             project_path = project.get('rootPath', '')
             project_enabled = project.get('enabled', True)
@@ -413,17 +459,17 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             if not project_path.startswith(('vscode:', 'file:')):
                 project_path = f"file://{project_path}"
 
-            if project_path.startswith(('file:')):
+            if project_path.startswith('file:'):
                 fs_path = Path(project_path.replace('file://', '', 1))
                 if not fs_path.exists():
                     continue
 
-            item = self.make_project_item(project_path, project.get('name', ''))
-            items.append(query.add(item))
+            items.append(self.make_project_item(project_path, project.get('name', '')))
 
         if not folders and not files and not workspaces:
-            items.append(query.add(self.make_item("Recent Files and Folders not found")))
-            return items
+            items.append(self.make_item("Recent Files and Folders not found"))
+            query.add(items)
+            return
 
         # Process recent items
         recent_items = []
@@ -438,6 +484,8 @@ class Plugin(PluginInstance, GlobalQueryHandler):
 
         # Apply remaining filters to recent items
         for path in recent_items:
+            if len(items) >= MAX_ITEMS:
+                break
             if not path:
                 continue
 
@@ -452,11 +500,12 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 continue
 
             if path in files:
-                items.append(query.add(self.make_recent_item(path, "File")))
+                items.append(self.make_recent_item(path, "File"))
             else:
-                items.append(query.add(self.make_recent_item(path, "Folder")))
+                items.append(self.make_recent_item(path, "Folder"))
 
-        return items
+        # Add all items at once to avoid UI locking
+        query.add(items)
 
     # avoid warning about calling a pure virtual function
     def handleGlobalQuery(self, query):
