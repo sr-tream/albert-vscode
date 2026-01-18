@@ -156,7 +156,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 "executable": "code"
             },
             "VSCode - Insiders": {
-                "icon_prefix": "icon",
+                "icon_prefix": "insiders",
                 "config_dir": "Code - Insiders",
                 "executable": "code-insiders"
             },
