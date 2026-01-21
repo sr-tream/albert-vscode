@@ -13,32 +13,38 @@ v0.8
   - add multi-editor support (VSCode, VSCodium, Cursor, Windsurf)
   - add git worktree extraction support
   - remove hardcoded 'code' executable requirement
+v0.9
+  - convert to API 5.0
+  - replace GlobalQueryHandler with GeneratorQueryHandler
+  - replace handleTriggerQuery with items generator method
+  - replace makeImageIcon with Icon.image static method
+  - rename query.string to context.query
 """
 
 import json
 import subprocess
 from pathlib import Path
 from shutil import which
-from typing import List, Literal, Tuple
+from typing import Generator, List, Literal, Tuple
 from albert import *
 
 md_name = "Visual Studio Code"
-md_iid = "4.0"
+md_iid = "5.0"
 md_description = "Open & search recent Visual Studio Code files and folders."
-md_version = "0.8"
+md_version = "0.9"
 md_authors = ["@mparati31", "@bierchermuesli", "@noah-boeckmann"]
 md_url = "https://github.com/mparati31/albert-vscode"
 md_license = "unknown license"
 
 
-class Plugin(PluginInstance, GlobalQueryHandler):
+class Plugin(PluginInstance, GeneratorQueryHandler):
     ICON_PROJECT = Path(__file__).parent / "icons" / "icon_project.png"
     ICON = Path(__file__).parent / "icons" / "icon.png"
     VSCODE_PROJECTS_PATH = Path.home() / ".config" / "Code" / "User" / "globalStorage" / 'alefragnani.project-manager' / 'projects.json'
     VSCODE_RECENT_PATH = Path.home() / ".config" / "Code" / "User" / "globalStorage" / "storage.json"
 
     def __init__(self):
-        GlobalQueryHandler.__init__(self)
+        GeneratorQueryHandler.__init__(self)
         PluginInstance.__init__(self)
 
         self._mode = self.readConfig("mode", str)
@@ -315,7 +321,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
     def make_item(self, text: str, subtext: str = "", actions: List[Action] = []) -> StandardItem:
         # Capture icon path as string to avoid issues with Path objects in lambdas
         icon_path = str(self.ICON)
-        return StandardItem(id=self.id(), icon_factory=lambda: makeImageIcon(icon_path), text=text, subtext=subtext, actions=actions)
+        return StandardItem(id=self.id(), icon_factory=lambda: Icon.image(icon_path), text=text, subtext=subtext, actions=actions)
 
     # Return an item that create a new window.
     def make_new_window_item(self) -> StandardItem:
@@ -355,26 +361,26 @@ class Plugin(PluginInstance, GlobalQueryHandler):
         icon_path = str(self.ICON_PROJECT)
         exe = self.EXECUTABLE
         return StandardItem(
-            id=self.id(), icon_factory=lambda: makeImageIcon(icon_path), text=name, subtext=formatted_path,
+            id=self.id(), icon_factory=lambda: Icon.image(icon_path), text=name, subtext=formatted_path,
             actions=[Action(id=path, text="Open in Visual Studio Code",
                             callable=lambda p=path: runDetachedProcess(cmdln=[exe, '--folder-uri', p]))]
         )
 
-    def handleTriggerQuery(self, query) -> None:
+    def items(self, context: QueryContext) -> Generator[List[Item]]:
         if not self.EXECUTABLE:
-            query.add(self.make_item(
+            yield [self.make_item(
                 f"{self.mode} not found",
                 f"Please install {self.mode} or check your mode in settings"
-            ))
+            )]
             return
 
-        query_text = query.string.strip().lower()
+        query_text = context.query.strip().lower()
 
         # Use cached data
         files, folders, workspaces = self._cached_files, self._cached_folders, self._cached_workspaces
         projects = self._cached_projects
 
-        # Collect all items in a list first, then add them all at once
+        # Collect all items in a list first, then yield them all at once
         items = []
         
         # Limit total items to prevent UI freeze
@@ -418,8 +424,8 @@ class Plugin(PluginInstance, GlobalQueryHandler):
                 else:
                     items.append(self.make_recent_item(path, "Folder"))
 
-            # Add all items at once
-            query.add(items)
+            # Yield all items at once
+            yield items
             return
 
         # Split query into multiple filters
@@ -468,7 +474,7 @@ class Plugin(PluginInstance, GlobalQueryHandler):
 
         if not folders and not files and not workspaces:
             items.append(self.make_item("Recent Files and Folders not found"))
-            query.add(items)
+            yield items
             return
 
         # Process recent items
@@ -504,9 +510,5 @@ class Plugin(PluginInstance, GlobalQueryHandler):
             else:
                 items.append(self.make_recent_item(path, "Folder"))
 
-        # Add all items at once to avoid UI locking
-        query.add(items)
-
-    # avoid warning about calling a pure virtual function
-    def handleGlobalQuery(self, query):
-        return []
+        # Yield all items at once to avoid UI locking
+        yield items
